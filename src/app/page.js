@@ -1,95 +1,363 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+'use client';
+
+import { Box, Stack, Typography, Button, Modal, TextField, Paper, styled, tableCellClasses } from "@mui/material";
+import { firestore } from "./firebase";
+import { collection, doc, getDocs, getDoc, query, setDoc, deleteDoc } from "firebase/firestore";
+import { useEffect, useState } from "react";
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination } from "@mui/material";
+
+const style = {
+  position: 'absolute',
+  top: '50%',
+  left: '50%',
+  transform: 'translate(-50%, -50%)',
+  width: 400,
+  bgcolor: 'background.paper',
+  border: '2px solid #000',
+  boxShadow: 24,
+  p: 4,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 3,
+};
+
+const columns = [
+  { id: 'name', label: 'Item Name', minWidth: 170 },
+  { id: 'quantity', label: 'Quantity', minWidth: 100 },
+  { id: 'actions', label: 'Actions', minWidth: 100, align: 'right' },
+];
+
+const StyledTableCell = styled(TableCell)(({ theme }) => ({
+  [`&.${tableCellClasses.head}`]: {
+    backgroundColor: "#BBADA1",
+    color: theme.palette.common.white,
+  },
+  [`&.${tableCellClasses.body}`]: {
+    fontSize: 14,
+  },
+}));
+
+const StyledTableRow = styled(TableRow)(({ theme }) => ({
+  '&:nth-of-type(odd)': {
+    backgroundColor: theme.palette.action.hover,
+    backgroundColor: "#E7D7CB",
+  },
+  '&:nth-of-type(even)': {
+    backgroundColor: "#F7EDE2",
+  },
+  // hide last border
+  '&:last-child td, &:last-child th': {
+    border: 0,
+  },
+}));
+
 
 export default function Home() {
+
+  const [pantry, setPantry] = useState([]);
+
+  const [open, setOpen] = useState(false);
+  const [open2, setOpen2] = useState(false);
+  const handleOpen = () => setOpen(true);
+  const handleClose = () => setOpen(false);
+  const handleOpen2 = () => setOpen2(true);
+  const handleClose2 = () => setOpen2(false);
+
+  const [itemName, setItemName] = useState('');
+  const [itemQuantity, setItemQuantity] = useState(1);
+  const [quantityToRemove, setQuantityToRemove] = useState(1);
+  const [itemToRemove, setItemToRemove] = useState('');
+
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  const [search, setSearch] = useState('');
+
+  const filteredPantry = pantry.filter( (item) => item.name.toLowerCase().includes(search.toLowerCase()));
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(+event.target.value);
+    setPage(0);
+  };
+
+  const updatePantry = async () => {
+
+    const snapshot = query(collection(firestore, 'pantry'));
+    const docs = await getDocs(snapshot);
+    const pantryList = [];
+    docs.forEach(doc => {
+      pantryList.push({ name:doc.id, ...doc.data() });
+    });
+    console.log(pantryList);
+    setPantry(pantryList);
+
+  }
+
+  useEffect( () => {
+
+    updatePantry();
+
+  }, []);
+
+  useEffect( () => {
+
+    setItemToRemove(itemToRemove);
+    setItemQuantity(itemQuantity);
+
+  }, [itemToRemove, itemQuantity]);
+
+  const addItem = async (item, count) => {
+
+    const docRef = doc(collection(firestore, 'pantry'), item);
+    // Check if the item already exists in the pantry
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const {quantity} = docSnap.data();
+      await setDoc(docRef, {quantity: Number(quantity) + Number(count)});
+    }
+    else {
+      await setDoc(docRef, {quantity: count});
+    }
+    await updatePantry();
+
+  }
+
+  const removeItem = async (item, count) => {
+
+    const docRef = doc(collection(firestore, 'pantry'), item);
+    // Check if the item already exists in the pantry
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const {quantity} = docSnap.data();
+      if (Number(quantity) === Number(count)) {
+        await deleteDoc(docRef);
+      }
+      else if (Number(quantity) > Number(count)) {
+        await setDoc(docRef, {quantity: Number(quantity) - Number(count)});
+      }
+      else {
+        console.log('Invalid quantity to remove.');
+      }
+    }
+    await updatePantry();
+
+  }
+
   return (
-    <main className={styles.main}>
-      <div className={styles.description}>
-        <p>
-          Get started by editing&nbsp;
-          <code className={styles.code}>src/app/page.js</code>
-        </p>
-        <div>
-          <a
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  <Box 
+    width="100vw" height="100vh"
+    bgcolor={"#D2C1B3"}
+    display={"flex"}
+    justifyContent={"center"}
+    flexDirection={"column"}
+    alignItems={"center"}
+    gap={3}
+  >
+    <Stack direction={"column"} spacing={2}>
+    <Typography variant={'h3'} color={"#333"} textAlign={"center"}>Pantry Tracker</Typography>
+    <Typography variant={'subtitle1'} color={"#333"} textAlign={"center"}>Pantry Management Made Easy.</Typography>
+
+    <Box width="800px" display={"flex"} justifyContent={"center"} alignItems={"center"}>
+      <TextField
+        id="outlined-search"
+        label="Search Pantry"
+        type="search"
+        fullWidth
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        sx={{
+          '& label.Mui-focused': {
+              color: '#543622', 
+            },
+          '& .MuiOutlinedInput-root': {
+            '&:hover fieldset': {
+              borderColor: '#725444',
+            },
+            '&.Mui-focused fieldset': {
+              color: '#333',
+              borderColor: '#725444',
+            },
+          },
+        }}
+      />
+    </Box>
+    </Stack>
+    <Modal
+      open={open}
+      onClose={handleClose}
+      aria-labelledby="modal-modal-title"
+      aria-describedby="modal-modal-description"
+    >
+      <Box sx={style}>
+        <Typography id="modal-modal-title" variant="h6" component="h2">
+          Add Item
+        </Typography>
+        <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              addItem(itemName, itemQuantity);
+              setItemName('');
+              handleClose();
+            }}
+            autoComplete="off"
           >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className={styles.vercelLogo}
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
-
-      <div className={styles.center}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className={styles.grid}>
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Docs <span>-&gt;</span>
-          </h2>
-          <p>Find in-depth information about Next.js features and API.</p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Learn <span>-&gt;</span>
-          </h2>
-          <p>Learn about Next.js in an interactive course with&nbsp;quizzes!</p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Templates <span>-&gt;</span>
-          </h2>
-          <p>Explore starter templates for Next.js.</p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Deploy <span>-&gt;</span>
-          </h2>
-          <p>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
-  );
+            <Stack width="100%" direction={"row"} spacing={2}>
+            <TextField 
+            required
+            id="outlined-required"
+            label="Item Name"
+            value={itemName}
+            onChange={(e) => setItemName(e.target.value)}/>
+            <TextField
+            required
+            id="outlined-number"
+            label="Quantity"
+            type="number"
+            InputLabelProps={{
+              shrink: true,
+            }}
+            InputProps={{
+              inputProps: { min: 1 },
+            }}
+            value={itemQuantity}
+            onChange={(e) => setItemQuantity(e.target.value)}/>
+            <Button type="submit" variant="outlined">Add</Button>
+            </Stack>
+        </form>
+      </Box>
+    </Modal>
+    <Button style={{backgroundColor: "#BBADA1", }} variant="contained" onClick={handleOpen}>
+        Add Item</Button>
+    <Box border={'1px solid #333'}>
+    <Box
+      width="800px"
+      display={"flex"}
+      justifyContent={"center"}
+      alignItems={"center"}
+      >
+      <Paper sx={{ width: '100%', overflow: 'auto' }}>
+      <TableContainer sx={{ maxHeight: 400 }}>
+        <Table stickyHeader aria-label="customized table">
+          <TableHead>
+            <TableRow>
+              {columns.map((column) => (
+              <StyledTableCell
+                key={column.id}
+                align={column.align}
+                style={{ minWidth: column.minWidth }}
+                >
+                <Typography
+                    variant={'h5'}
+                    color={"#333"} 
+                    textAlign={"center"}
+                  >
+                  {column.label}
+                  </Typography>
+              </StyledTableCell>
+              ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+          {filteredPantry.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((item) => {
+            return (
+              <StyledTableRow
+                hover
+                role="checkbox"
+                tabIndex={-1}
+                key={item.name}
+              >
+                {columns.map((column) => {
+                  const value = item[column.id];
+                  return (
+                    column.id === 'actions' ?
+                    <StyledTableCell align={"center"}>
+                    <Button style={{backgroundColor: "#BBADA1", }} variant="contained" onClick={() => {
+                        handleOpen2(),
+                        setItemToRemove(item.name),
+                        setItemQuantity(item.quantity)
+                        }}>
+                      Remove Item
+                      </Button>
+                      <Modal
+                        open={open2}
+                        onClose={handleClose2}
+                        aria-labelledby="modal-modal-2"
+                        aria-describedby="modal-modal-2"
+                        slotProps={{
+                          backdrop: { style: 
+                            {
+                              backgroundColor: 'rgba(0,0,0,0.1)',
+                              outline: 'none',
+                            } 
+                          } 
+                        }}
+                      >
+                        <Box sx={style}>
+                          <Typography id="modal-modal-2" variant="h6" component="h2">
+                            Remove Item
+                          </Typography>
+                          <Stack width="100%" direction={"row"} spacing={2}>
+                            <TextField
+                            required
+                            error={quantityToRemove > itemQuantity}
+                            helperText={quantityToRemove > itemQuantity ? "Invalid Quantity." : ""}
+                            fullWidth
+                            id="outlined-number"
+                            label="Quantity"
+                            type="number"
+                            value={quantityToRemove}
+                            InputLabelProps={{
+                              shrink: true,
+                            }}
+                            InputProps={{
+                              inputProps: { min: 1, max: itemQuantity },
+                            }}
+                            onChange={(e) => setQuantityToRemove(e.target.value)}/>
+    
+                            <Button variant="outlined" onClick={() => {
+                              removeItem(itemToRemove, quantityToRemove), 
+                              setItemToRemove(''),
+                              handleClose2()
+                            }}  
+                            >Remove</Button>
+                          </Stack>
+                        </Box>
+                      </Modal>
+                    </StyledTableCell> :
+                    <StyledTableCell key={column.id} align={column.align}>
+                      <Typography
+                        variant={'h5'}
+                        color={"#333"} 
+                        textAlign={"center"}
+                      >
+                      {column.format && typeof value === 'number' ? column.format(value) : value}
+                      </Typography>
+                    </StyledTableCell>
+                  );
+                })}
+              </StyledTableRow>
+            );
+          })}
+          </TableBody>
+        </Table>
+      </TableContainer>
+      <TablePagination
+        rowsPerPageOptions={[10, 25, 100]}
+        component="div"
+        count={pantry.length}
+        rowsPerPage={rowsPerPage}
+        page={page}
+        onPageChange={handleChangePage}
+        onRowsPerPageChange={handleChangeRowsPerPage}
+      /> 
+      </Paper>
+      </Box>
+    
+    </Box>
+  </Box>
+  )
 }
