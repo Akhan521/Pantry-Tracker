@@ -6,13 +6,14 @@ import { collection, doc, getDocs, getDoc, query, setDoc, deleteDoc } from "fire
 import { useEffect, useState } from "react";
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination } from "@mui/material";
 
+// Default styling.
 const style = {
   position: 'absolute',
   top: '50%',
   left: '50%',
   transform: 'translate(-50%, -50%)',
   width: 400,
-  bgcolor: 'background.paper',
+  bgcolor: '#D2C1B3',
   border: '2px solid #000',
   boxShadow: 24,
   p: 4,
@@ -21,12 +22,14 @@ const style = {
   gap: 3,
 };
 
+// Table columns.
 const columns = [
   { id: 'name', label: 'Item Name', minWidth: 170 },
   { id: 'quantity', label: 'Quantity', minWidth: 100 },
   { id: 'actions', label: 'Actions', minWidth: 100, align: 'right' },
 ];
 
+// Styled components for the table.
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   [`&.${tableCellClasses.head}`]: {
     backgroundColor: "#BBADA1",
@@ -51,30 +54,25 @@ const StyledTableRow = styled(TableRow)(({ theme }) => ({
   },
 }));
 
-
+// Main component.
 export default function Home() {
-
+  // State variables: pantry list and modal states.
   const [pantry, setPantry] = useState([]);
-
-  const [open, setOpen] = useState(false);
-  const [open2, setOpen2] = useState(false);
-  const handleOpen = () => setOpen(true);
-  const handleClose = () => setOpen(false);
-  const handleOpen2 = () => setOpen2(true);
-  const handleClose2 = () => setOpen2(false);
-
+  // Modal state variables.
+  const [openMod1, setOpenMod1] = useState(false);
+  const [openMod2, setOpenMod2] = useState(false);
+  const handleOpenMod1 = () => setOpenMod1(true);
+  const handleCloseMod1 = () => setOpenMod1(false);
+  const handleOpenMod2 = () => setOpenMod2(true);
+  const handleCloseMod2 = () => setOpenMod2(false);
+  // State variables for item name, quantity, and item to remove.
   const [itemName, setItemName] = useState('');
   const [itemQuantity, setItemQuantity] = useState(1);
   const [quantityToRemove, setQuantityToRemove] = useState(1);
   const [itemToRemove, setItemToRemove] = useState('');
-
+  // State variables for pagination.
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-
-  const [search, setSearch] = useState('');
-
-  const filteredPantry = pantry.filter( (item) => item.name.toLowerCase().includes(search.toLowerCase()));
-
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
   };
@@ -84,6 +82,11 @@ export default function Home() {
     setPage(0);
   };
 
+  // State variable for search and filtered pantry list.
+  const [search, setSearch] = useState('');
+  const filteredPantry = pantry.filter( (item) => item.name.toLowerCase().includes(search.toLowerCase()));
+
+  // Function to update the pantry list.
   const updatePantry = async () => {
 
     const snapshot = query(collection(firestore, 'pantry'));
@@ -97,12 +100,14 @@ export default function Home() {
 
   }
 
+  // Use effect to update the pantry list on load.
   useEffect( () => {
 
     updatePantry();
 
   }, []);
 
+  // Use effect to update the item to remove and quantity.
   useEffect( () => {
 
     setItemToRemove(itemToRemove);
@@ -110,9 +115,12 @@ export default function Home() {
 
   }, [itemToRemove, itemQuantity]);
 
+  // Function to add an item to the pantry.
   const addItem = async (item, count) => {
-
-    const docRef = doc(collection(firestore, 'pantry'), item);
+    // making sure the name is consistent
+    const trimmed = item.trim();
+    const itm = trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+    const docRef = doc(collection(firestore, 'pantry'), itm);
     // Check if the item already exists in the pantry
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
@@ -126,6 +134,7 @@ export default function Home() {
 
   }
 
+  // Function to remove an item from the pantry.
   const removeItem = async (item, count) => {
 
     const docRef = doc(collection(firestore, 'pantry'), item);
@@ -147,6 +156,7 @@ export default function Home() {
 
   }
 
+  // Return the main component.
   return (
   <Box 
     width="100vw" height="100vh"
@@ -187,8 +197,8 @@ export default function Home() {
     </Box>
     </Stack>
     <Modal
-      open={open}
-      onClose={handleClose}
+      open={openMod1}
+      onClose={handleCloseMod1}
       aria-labelledby="modal-modal-title"
       aria-describedby="modal-modal-description"
     >
@@ -201,7 +211,7 @@ export default function Home() {
               e.preventDefault();
               addItem(itemName, itemQuantity);
               setItemName('');
-              handleClose();
+              handleCloseMod1();
             }}
             autoComplete="off"
           >
@@ -211,7 +221,22 @@ export default function Home() {
             id="outlined-required"
             label="Item Name"
             value={itemName}
-            onChange={(e) => setItemName(e.target.value)}/>
+            onChange={(e) => setItemName(e.target.value)}
+            sx={{
+              '& label.Mui-focused': {
+                  color: '#543622', 
+                },
+              '& .MuiOutlinedInput-root': {
+                '&:hover fieldset': {
+                  borderColor: '#725444',
+                },
+                '&.Mui-focused fieldset': {
+                  color: '#333',
+                  borderColor: '#725444',
+                },
+              },
+            }}
+            />
             <TextField
             required
             id="outlined-number"
@@ -224,13 +249,37 @@ export default function Home() {
               inputProps: { min: 1 },
             }}
             value={itemQuantity}
-            onChange={(e) => setItemQuantity(e.target.value)}/>
-            <Button type="submit" variant="outlined">Add</Button>
+            onChange={(e) => setItemQuantity(e.target.value)}
+            sx={{
+              '& label.Mui-focused': {
+                  color: '#543622', 
+                },
+              '& .MuiOutlinedInput-root': {
+                '&:hover fieldset': {
+                  borderColor: '#725444',
+                },
+                '&.Mui-focused fieldset': {
+                  color: '#333',
+                  borderColor: '#725444',
+                },
+              },
+            }}
+            />
+            <Button type="submit"
+              variant="contained"
+              sx={{
+                color: "white",
+                bgcolor: "#725444",
+                '&:hover': {
+                  bgcolor: "#543622",
+                },
+              }}
+              >Add</Button>
             </Stack>
         </form>
       </Box>
     </Modal>
-    <Button style={{backgroundColor: "#BBADA1", }} variant="contained" onClick={handleOpen}>
+    <Button style={{backgroundColor: "#BBADA1", }} variant="contained" onClick={handleOpenMod1}>
         Add Item</Button>
     <Box border={'1px solid #333'}>
     <Box
@@ -275,23 +324,38 @@ export default function Home() {
                   return (
                     column.id === 'actions' ?
                     <StyledTableCell align={"center"}>
-                    <Button style={{backgroundColor: "#BBADA1", }} variant="contained" onClick={() => {
-                        handleOpen2(),
+                    <Button 
+                      style={{backgroundColor: "#BBADA1", }}
+                      variant="contained"
+                      onClick={() => {
+                        handleOpenMod2(),
                         setItemToRemove(item.name),
                         setItemQuantity(item.quantity)
-                        }}>
-                      Remove Item
-                      </Button>
+                      }}
+                      >Remove Item</Button>
                       <Modal
-                        open={open2}
-                        onClose={handleClose2}
+                        open={openMod2}
+                        onClose={handleCloseMod2}
                         aria-labelledby="modal-modal-2"
                         aria-describedby="modal-modal-2"
+                        sx={{
+                          '& label.Mui-focused': {
+                              color: '#543622', 
+                            },
+                          '& .MuiOutlinedInput-root': {
+                            '&:hover fieldset': {
+                              borderColor: '#725444',
+                            },
+                            '&.Mui-focused fieldset': {
+                              color: '#333',
+                              borderColor: '#725444',
+                            },
+                          },
+                        }}
                         slotProps={{
                           backdrop: { style: 
                             {
-                              backgroundColor: 'rgba(0,0,0,0.1)',
-                              outline: 'none',
+                              backgroundColor: 'rgba(0,0,0,0.2)',
                             } 
                           } 
                         }}
@@ -318,11 +382,20 @@ export default function Home() {
                             }}
                             onChange={(e) => setQuantityToRemove(e.target.value)}/>
     
-                            <Button variant="outlined" onClick={() => {
-                              removeItem(itemToRemove, quantityToRemove), 
-                              setItemToRemove(''),
-                              handleClose2()
-                            }}  
+                            <Button
+                              variant="contained"
+                              onClick={() => {
+                                removeItem(itemToRemove, quantityToRemove), 
+                                setItemToRemove(''),
+                                handleCloseMod2()
+                              }}
+                              sx={{
+                                color: "white",
+                                bgcolor: "#725444",
+                                '&:hover': {
+                                  bgcolor: "#543622",
+                                },
+                              }} 
                             >Remove</Button>
                           </Stack>
                         </Box>
@@ -334,7 +407,10 @@ export default function Home() {
                         color={"#333"} 
                         textAlign={"center"}
                       >
-                      {column.format && typeof value === 'number' ? column.format(value) : value}
+                      {column.format && typeof value === 'number' ? 
+                        column.format(value) : 
+                        value.toString().charAt(0).toUpperCase() + value.toString().slice(1)
+                      }
                       </Typography>
                     </StyledTableCell>
                   );
